@@ -41,7 +41,7 @@ spec:
           value: "1"
         - name: PYTHONDONTWRITEBYTECODE
           value: "1"
-        image: chunchiehdev/grading-pdf:latest
+        image: chunchiehdev/grading-pdf:master
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
@@ -118,17 +118,17 @@ spec:
             cpu: "1000m"
           requests:
             memory: "512Mi"
-            cpu: "500m"
-        livenessProbe:
-          exec:
-            command:
-            - celery
-            - -A
-            - app.worker.celery_app
-            - inspect
-            - ping
-          initialDelaySeconds: 30
-          periodSeconds: 30
-          timeoutSeconds: 10
-          successThreshold: 1
-          failureThreshold: 3 
+            cpu: "200m"
+        # livenessProbe:
+        #   exec:
+        #     command:
+        #     - celery
+        #     - -A
+        #     - app.worker.celery_app
+        #     - inspect
+        #     - ping
+        #   initialDelaySeconds: 30
+        #   periodSeconds: 30
+        #   timeoutSeconds: 10
+        #   successThreshold: 1
+        #   failureThreshold: 3 
