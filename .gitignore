@@ -85,3 +85,5 @@ celerybeat.pid
 tmp/
 temp/
 *.tmp 
+
+reference/

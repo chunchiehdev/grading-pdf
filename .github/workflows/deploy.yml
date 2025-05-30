@@ -15,7 +15,7 @@ jobs:
       run: |
         echo "Starting deployment process"
         echo "Branch: ${{ github.ref }}"
-        echo "Commit: ${GITHUB_SHA::7}" 
+        echo "Commit: ${{ github.sha }}"
 
     - uses: actions/checkout@v4
       
@@ -31,7 +31,7 @@ jobs:
         push: true
         tags: |
           chunchiehdev/grading-pdf:${{ github.ref_name }}
-          chunchiehdev/grading-pdf:${{ github.ref_name }}-${GITHUB_SHA::7}
+          chunchiehdev/grading-pdf:${{ github.ref_name }}-${{ github.sha }}
 
     - name: Deploy to K3s
       uses: appleboy/ssh-action@master
