@@ -1,0 +1,94 @@
+name: Docker CI/CD
+
+on:
+  push:
+    branches: 
+      - "master" 
+      - "development"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'master' && 'production' || 'development' }}
+    steps:
+    - name: Start Deployment
+      run: |
+        echo "Starting deployment process"
+        echo "Branch: ${{ github.ref }}"
+        echo "Commit: ${GITHUB_SHA::7}" 
+
+    - uses: actions/checkout@v4
+      
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_TOKEN }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        push: true
+        tags: |
+          chunchiehdev/grading-pdf:${{ github.ref_name }}
+          chunchiehdev/grading-pdf:${{ github.ref_name }}-${GITHUB_SHA::7}
+
+    - name: Deploy to K3s
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        script: |
+          set +x  
+          export KUBECONFIG=~/.kube/config
+          echo "Starting grading-pdf deployment for ${{ github.ref_name }}"
+          
+          if [ "${{ github.ref_name }}" = "master" ]; then
+            cd ~/grading-pdf
+            if [ -d k8s ]; then
+              echo "Updating image tags..."
+              sed -i "s|chunchiehdev/grading-pdf:latest|chunchiehdev/grading-pdf:${{ github.ref_name }}|g" k8s/deployment.yaml
+              
+              echo "Applying ConfigMap..."
+              kubectl apply -f k8s/configmap.yaml
+              
+              echo "Deploying Redis..."
+              kubectl apply -f k8s/redis.yaml
+              
+              echo "Applying Services..."
+              kubectl apply -f k8s/service.yaml
+              
+              echo "Deploying Applications..."
+              kubectl apply -f k8s/deployment.yaml
+              
+              echo "Applying Ingress..."
+              kubectl apply -f k8s/ingress.yaml
+              
+              echo "Checking deployment status..."
+              kubectl rollout status deployment grading-pdf-api -n grading-pdf
+              kubectl rollout status deployment grading-pdf-worker -n grading-pdf
+              
+              echo "Deployment completed successfully!"
+            else
+              echo "Error: k8s/ directory not found"
+              exit 1
+            fi
+          else
+            echo "Development environment - skipping deployment"
+          fi
+          
+    - name: Deployment Summary
+      run: |
+        echo "📝 Deployment Summary"
+        echo "-------------------"
+        echo "✅ Pipeline completed successfully"
+        echo "Environment: ${{ github.ref_name == 'master' && 'production' || 'development' }}"
+        echo "Branch: ${{ github.ref }}"
+        echo "Image: chunchiehdev/grading-pdf:${{ github.ref_name }}"
+        echo "URL: https://gradingpdf.grading.software"
+
+    - name: Handle Failure
+      if: failure()
+      run: |
+        echo "❌ Deployment encountered an issue" 

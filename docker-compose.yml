@@ -1,0 +1,38 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - api_network
+
+  worker:
+    build: .
+    command: celery -A app.worker.celery_app worker --loglevel=info --concurrency=4
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+    networks:
+      - api_network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6378:6379"
+    command: redis-server --appendonly yes
+    restart: unless-stopped 
+    networks:
+      - api_network
+
+networks:
+  api_network:
+    
